@@ -330,8 +330,10 @@ DOC-POSITION indicates at which side the doc will be rendered."
     (--> (if (and tooltip-abovep (< (length doc-lines) (- (length tooltip-lines) 1))
                   (< ncandidates tooltip-height))
              (append (make-list (- (length tooltip-lines) (length doc-lines) 1) "")
-                     doc-lines))
+                     doc-lines)
+           doc-lines)
          (company-tip--merge-docstrings tooltip-lines it doc-position)
+         ;; (company-tip--merge-docstrings tooltip-lines doc-lines doc-position)
          (if tooltip-popped-nl (cons tooltip-popped-nl it) it)
          (string-join it "\n")
          (overlay-put company-pseudo-tooltip-overlay
@@ -467,11 +469,11 @@ side."
                        (append
                         (if (< (length doc-strings) (- tooltip-height ncandidates))
                             (mapcar
-                             (lambda (l) (substring l (+ 1 (window-hscroll))))
+                             (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
                              (cl-subseq tooltip-strings 0 (- (- tooltip-height ncandidates) (length doc-strings)))))
                         (cl-subseq doc-strings (- (min (length doc-strings) (- tooltip-height ncandidates))))
                         (mapcar
-                         (lambda (l) (substring l (+ 1 (window-hscroll))))
+                         (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
                          (cl-subseq tooltip-strings (- ncandidates))))))
 
                  (doc-part-nlines-above
@@ -491,7 +493,7 @@ side."
           (company-tip--render-doc-part-below doc-strings position)
         (let* ((doc-part-matching-tooltip
                 (and (< ncandidates tooltip-height)
-                     (append (mapcar (lambda (l) (substring l (+ 1 (window-hscroll)))) (cl-subseq tooltip-strings 0 ncandidates))
+                     (append (mapcar (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll))))) (cl-subseq tooltip-strings 0 ncandidates))
                              (cl-subseq doc-strings 0 (min (length doc-strings) (- tooltip-height ncandidates))))))
 
                (doc-part-nlines-below
