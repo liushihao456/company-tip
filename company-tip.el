@@ -194,7 +194,7 @@ off."
        (split-string it "[\n\v\f\r](?![\n\v\f\r])")
        (-map (lambda (line) (company-tip--wrapped-line line line-width)) it)
        (string-join it "\n")
-       (split-string it "[\n\v\f\r]")
+       (s-lines it)
        (-map (lambda (line) (company-tip--padding line line-width)) it)))
 
 (defun company-tip--pos-after-lines (start n)
@@ -258,8 +258,7 @@ DOC-POSITION indicates at which side the doc will be rendered."
                       (line-beginning-position) (- tooltip-height))
                    (line-beginning-position)))
          (ov-start (company-tip--pos-after-lines ov-end (- n-lines)))
-         (buffer-lines
-          (split-string (buffer-substring ov-start ov-end) "[\n\v\f\r]"))
+         (buffer-lines (s-lines (buffer-substring ov-start ov-end)))
          (ov (make-overlay ov-start ov-end)))
     (!cons ov company-tip-overlays)
     (--> (company-tip--merge-docstrings buffer-lines doc-lines doc-position)
@@ -280,9 +279,8 @@ indicates at which side the doc will be rendered."
          (current-buffer-line
           (buffer-substring (line-beginning-position) (line-end-position)))
          (tooltip-lines
-          (split-string
-           (overlay-get company-pseudo-tooltip-overlay 'company-display)
-           "[\n\v\f\r]"))
+          (s-lines
+           (overlay-get company-pseudo-tooltip-overlay 'company-display)))
          (use-after-string
           (overlay-get company-pseudo-tooltip-overlay 'after-string))
          (ov-start-col
@@ -320,18 +318,20 @@ indicates at which side the doc will be rendered."
 
 The 1st arg DOC-LINES is a list containing doc string lines.  The 2nd arg
 DOC-POSITION indicates at which side the doc will be rendered."
-  (let* ((company-nl
-          (nth 2 (overlay-get company-pseudo-tooltip-overlay
-                              'company-replacement-args)))
-         (tooltip-lines
-          (split-string
-           (overlay-get company-pseudo-tooltip-overlay 'company-display)
-           "[\n\v\f\r]"))
-         (use-after-string
-          (overlay-get company-pseudo-tooltip-overlay 'after-string))
+  (let* ((ov company-pseudo-tooltip-overlay)
+         (ncandidates (length company-candidates))
+         (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
+         (tooltip-height (abs (overlay-get ov 'company-height)))
+         (company-nl (nth 2 (overlay-get ov 'company-replacement-args)))
+         (tooltip-lines (s-lines (overlay-get ov 'company-display)))
+         (use-after-string (overlay-get ov 'after-string))
          (tooltip-popped-nl
           (and use-after-string company-nl (pop tooltip-lines))))
-    (--> (company-tip--merge-docstrings tooltip-lines doc-lines doc-position)
+    (--> (if (and tooltip-abovep (< (length doc-lines) (- (length tooltip-lines) 1))
+                  (< ncandidates tooltip-height))
+             (append (make-list (- (length tooltip-lines) (length doc-lines) 1) "")
+                     doc-lines))
+         (company-tip--merge-docstrings tooltip-lines it doc-position)
          (if tooltip-popped-nl (cons tooltip-popped-nl it) it)
          (string-join it "\n")
          (overlay-put company-pseudo-tooltip-overlay
@@ -344,21 +344,21 @@ The 1st arg DOC-LINES is a list containing doc string lines.  The 2nd arg
 DOC-POSITION indicates at which side the doc will be rendered."
   (let* ((n-lines (length doc-lines))
          (tooltip-lines
-          (split-string
-           (overlay-get company-pseudo-tooltip-overlay 'company-display)
-           "[\n\v\f\r]"))
+          (s-lines
+           (overlay-get company-pseudo-tooltip-overlay 'company-display)))
          (tooltip-height
           (abs (overlay-get company-pseudo-tooltip-overlay 'company-height)))
-         (tooltip-abovep (nth 3 (overlay-get company-pseudo-tooltip-overlay 'company-replacement-args)))
+         (tooltip-abovep
+          (nth 3 (overlay-get
+                  company-pseudo-tooltip-overlay 'company-replacement-args)))
          (ov-start
           (if tooltip-abovep
               (company-tip--pos-after-lines
                (line-beginning-position) 1)
-              (company-tip--pos-after-lines
-               (line-beginning-position) (1+ tooltip-height))))
+            (company-tip--pos-after-lines
+             (line-beginning-position) (1+ tooltip-height))))
          (ov-end (company-tip--pos-after-lines ov-start (1+ n-lines)))
-         (buffer-lines
-          (split-string (buffer-substring ov-start ov-end) "[\n\v\f\r]"))
+         (buffer-lines (s-lines (buffer-substring ov-start ov-end)))
          (use-after-string (>= ov-start ov-end))
          (ov (make-overlay ov-start ov-end)))
     (!cons ov company-tip-overlays)
@@ -457,8 +457,8 @@ side."
          (tooltip-string (overlay-get ov 'company-display))
          (tooltip-strings
           (if tooltip-abovep
-              (cl-subseq (split-string tooltip-string "[\n\v\f\r]") 0 -1)
-            (split-string tooltip-string "[\n\v\f\r]"))))
+              (cl-subseq (s-lines tooltip-string) 0 -1)
+            (s-lines tooltip-string))))
     (cond
      ((eq position 'top)
       (if tooltip-abovep
