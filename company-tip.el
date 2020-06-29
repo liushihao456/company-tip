@@ -167,8 +167,7 @@ just grab the first candidate and press forward."
 (defun company-tip--hide ()
   "Hide the current tip tip."
   (when (> (length company-tip-overlays) 0)
-    (dolist (ov company-tip-overlays)
-      (delete-overlay ov))
+    (seq-do 'delete-overlay company-tip-overlays)
     (setq company-tip-overlays nil)))
 
 (defun company-tip--wrapped-line (line line-width)
@@ -561,11 +560,11 @@ side."
                      (cl-subseq doc-strings-left 0 (min (length doc-strings-left) window-height)) 'left))
                    ((>= area-top (max area-right area-left area-bottom))
                     (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
-                    (company-tip--render-sidewise
+                    (company-tip--render-stackwise
                      (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-top)) 'top))
                    ((>= area-bottom (max area-right area-left area-top))
                     (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
-                    (company-tip--render-sidewise
+                    (company-tip--render-stackwise
                      (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-bottom)) 'bottom))
                    )))))
 
