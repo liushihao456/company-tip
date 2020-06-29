@@ -212,7 +212,7 @@ The 3rd arg POSITION, indicates at which side the doc will be rendered."
          (tooltip-width (overlay-get ov 'company-width))
          (company-column (overlay-get ov 'company-column))
          (horizontal-span (+ (company--window-width) (window-hscroll)))
-         (tooltip-column (min (- horizontal-span tooltip-width) company-column))
+         (tooltip-column (min (+ 1 (- horizontal-span tooltip-width)) company-column))
          (index-start (if (eq position 'right)
                           (+ tooltip-column tooltip-width)
                         (1+ (window-hscroll)))))
@@ -520,11 +520,11 @@ side."
            (window-width (company--window-width))
            (window-height (company--window-height))
            (horizontal-span (+ window-width (window-hscroll)))
-           (tooltip-column (min (- horizontal-span tooltip-width) company-column))
+           (tooltip-column (min (+ 1 (- horizontal-span tooltip-width)) company-column))
            (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
            (current-row (cdr (company--col-row (line-beginning-position))))
            (remaining-cols-right
-            (- (+ (company--window-width) (window-hscroll)) tooltip-column tooltip-width 2))
+            (- (+ window-width (window-hscroll)) tooltip-column tooltip-width 2))
            (remaining-cols-left
             (- tooltip-column (window-hscroll) 5))
            (remaining-rows-top
@@ -541,7 +541,7 @@ side."
            ;; Prefer show on right
            (and (> remaining-cols-right 5)
                 (setq doc-strings-right (company-tip--format-string doc remaining-cols-right))
-                (and (<= (length doc-strings-right) (company--window-height))
+                (and (<= (length doc-strings-right) window-height)
                      (company-tip--render-sidewise doc-strings-right 'right)))
            ;; If no enough space on the right, show on the side with the most space
            (and t
@@ -553,16 +553,20 @@ side."
                    ((>= area-right (max area-left area-top area-bottom))
                     (or doc-strings-right
                         (setq doc-strings-right (company-tip--format-string doc remaining-cols-right)))
-                    (company-tip--render-sidewise (cl-subseq doc-strings-right 0 window-height) 'right))
+                    (company-tip--render-sidewise
+                     (cl-subseq doc-strings-right 0 (min (length doc-strings-right) window-height)) 'right))
                    ((>= area-left (max area-right area-top area-bottom))
                     (setq doc-strings-left (company-tip--format-string doc remaining-cols-left))
-                    (company-tip--render-sidewise (cl-subseq doc-strings-left 0 window-height) 'left))
+                    (company-tip--render-sidewise
+                     (cl-subseq doc-strings-left 0 (min (length doc-strings-left) window-height)) 'left))
                    ((>= area-top (max area-right area-left area-bottom))
                     (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
-                    (company-tip--render-sidewise (cl-subseq doc-strings-top-bottom 0 remaining-rows-top) 'top))
+                    (company-tip--render-sidewise
+                     (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-top)) 'top))
                    ((>= area-bottom (max area-right area-left area-top))
                     (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
-                    (company-tip--render-sidewise (cl-subseq doc-strings-top-bottom 0 remaining-rows-bottom) 'bottom))
+                    (company-tip--render-sidewise
+                     (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-bottom)) 'bottom))
                    )))))
 
         ;; (message "Changed overlay string: ---------------------------")
