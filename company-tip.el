@@ -378,7 +378,7 @@ DOC-POSITION indicates at which side the doc will be rendered."
   "Get the layout for doc parts.  DOC-LINES-LENGTH is the number of lines of doc."
   (let* ((tooltip-height (abs (overlay-get company-pseudo-tooltip-overlay 'company-height)))
          (tooltip-abovep (nth 3 (overlay-get company-pseudo-tooltip-overlay 'company-replacement-args)))
-         (current-row (cdr (company--col-row (line-beginning-position)))))
+         (current-row (cdr (company--col-row (- (point) 1)))))
     (if tooltip-abovep
         (let* ((nlines-above
                 (min (max (- current-row tooltip-height) 0)
@@ -482,7 +482,7 @@ side."
                     (length doc-strings)))
                  (doc-part-lines-above
                   (and (> doc-part-nlines-above 0)
-                       (cl-subseq doc-strings (- doc-part-nlines-above)))))
+                       (cl-subseq doc-strings 0 doc-part-nlines-above))))
             (when doc-part-matching-tooltip
               (company-tip--render-doc-part-matching-tooltip doc-part-matching-tooltip position))
             (when doc-part-lines-above
@@ -523,7 +523,7 @@ side."
            (horizontal-span (+ window-width (window-hscroll)))
            (tooltip-column (min (+ 1 (- horizontal-span tooltip-width)) company-column))
            (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
-           (current-row (cdr (company--col-row (line-beginning-position))))
+           (current-row (cdr (company--col-row (- (point) 1))))
            (remaining-cols-right
             (- (+ window-width (window-hscroll)) tooltip-column tooltip-width 2))
            (remaining-cols-left
@@ -550,6 +550,7 @@ side."
                        (area-left (* remaining-cols-left window-height))
                        (area-top (* remaining-rows-top window-width))
                        (area-bottom (* remaining-rows-bottom window-width)))
+                  ;; (message "%d %d %d %d %d %d" current-row remaining-rows-top area-right area-left area-top area-bottom)
                   (cond
                    ((>= area-right (max area-left area-top area-bottom))
                     (or doc-strings-right
