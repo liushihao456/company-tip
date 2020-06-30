@@ -88,7 +88,7 @@ Only the `background' is used in this face."
      (company-tip--cancel-timer)
      (company-tip--hide))
     (`post-command
-     (unless (company--show-inline-p)
+     (when company-pseudo-tooltip-overlay
        (company-tip--set-timer)))
     ))
 
@@ -432,7 +432,6 @@ DOC-LINES is a list of doc string lines.  The 2nd arg POSITION, should be
 either 'right, meaning showing the doc on the right side, or 'left, meaning left
 side."
   (let* ((layout (company-tip--get-layout (length doc-lines))))
-    ;; (message "%s" layout)
     (dolist (i layout t)
       (let* ((doc-part-lines (cl-subseq doc-lines 0 (cdr i))))
         (setq doc-lines (cl-subseq doc-lines (cdr i)))
@@ -550,7 +549,6 @@ side."
                        (area-left (* remaining-cols-left window-height))
                        (area-top (* remaining-rows-top window-width))
                        (area-bottom (* remaining-rows-bottom window-width)))
-                  ;; (message "%d %d %d %d %d %d" current-row remaining-rows-top area-right area-left area-top area-bottom)
                   (cond
                    ((>= area-right (max area-left area-top area-bottom))
                     (or doc-strings-right
@@ -569,14 +567,10 @@ side."
                     (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
                     (company-tip--render-stackwise
                      (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-bottom)) 'bottom))
-                   )))))
-
-        ;; (message "Changed overlay string: ---------------------------")
-        ;; (message "%s" (or (overlay-get ov 'display) (overlay-get ov 'after-string)))
-        ;; (message "End of changed overlay string: --------------------")
-        ))))
+                   )))))))))
 
 (defun company-tip--set-timer ()
+  "Set timer for tip to pop up."
   (company-tip--hide)
   (when (or (null company-tip--timer)
             (eq this-command #'company-tip--manual-begin))
@@ -585,16 +579,19 @@ side."
                                'company-tip--show))))
 
 (defun company-tip--cancel-timer ()
+  "Cancel timer."
   (when (timerp company-tip--timer)
     (cancel-timer company-tip--timer)
     (setq company-tip--timer nil)))
 
 (defun company-tip--enable ()
+  "Enable company tip."
   (add-hook 'focus-out-hook #'company-cancel nil t)
   (make-local-variable 'company-frontends)
   (add-to-list 'company-frontends 'company-tip-frontend :append))
 
 (defun company-tip--disable ()
+  "Disable company tip."
   (remove-hook 'focus-out-hook #'company-cancel t)
   (company-tip--cancel-timer)
   (setq-local company-frontends (delq 'company-tip-frontend company-frontends)))
