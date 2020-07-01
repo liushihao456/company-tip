@@ -24,6 +24,11 @@
 
 ;; When idling on a completion candidate the documentation for the
 ;; candidate will pop up after `company-tip-delay' seconds.
+;;
+;; The documentation will first try to show on the right side.  If there
+;; is not enough space on the right side, it will check the right, left,
+;; top and bottom side, and show on the one with the most space.  The
+;; documentation string may be truncated if it is too long.
 
 ;;; Usage:
 ;;  put (company-tip-mode) in your init.el to activate
@@ -57,6 +62,14 @@ be triggered manually using `company-tip-manual-begin'."
                  (const :tag "Don't limit the number of lines shown" nil))
   :group 'company-tip)
 
+(defcustom company-tip-min-cols-if-show-on-right 5
+  "The minimum number of columns if the doc is to be shown on the right side.
+
+The doc will be preferred showing on the right side.  But if the actual number
+ of columns is smaller than this, the doc will look to the other sides."
+  :type 'integer
+  :group 'company-tip)
+
 (defface company-tip-background
   '((((background light)) :background "#6F6F6F")
     (t :background "#272A36"))
@@ -85,9 +98,10 @@ Only the `background' is used in this face."
   "`company-mode' front-end showing documentation in a popup."
   (pcase command
     (`pre-command
-     (company-tip--cancel-timer)
      (company-tip--hide))
+     (company-tip--cancel-timer)
     (`post-command
+     (company-tip--hide)
      (when company-pseudo-tooltip-overlay
        (company-tip--set-timer)))
     ))
@@ -181,15 +195,15 @@ just grab the first candidate and press forward."
   "Add trailing whitespaces to string LINE to reach length LEN.
 Then add one whitespace to begin and end of it.
 
-There might be words longer than LINE-WIDTH, in which case they have to be cut
-off."
+There might be words longer than LINE-WIDTH, in which case they have to be
+truncated."
   (let ((line (if (> (string-width line) len) (concat " "(substring line 0 len) " ")
                 (concat " " line (make-string (- len (string-width line)) ?\s) " "))))
     (add-face-text-property 0 (length line) (list :background (face-background 'company-tip-background nil t) :foreground (face-foreground 'default)) t line)
     line))
 
 (defun company-tip--format-string (string line-width)
-  "Wrap STRING to max width LINE-WIDTH, and cutoff at max height HEIGHT."
+  "Wrap STRING to max width LINE-WIDTH, and truncated at max height HEIGHT."
   (--> string
        (split-string it "[\n\v\f\r](?![\n\v\f\r])")
        (-map (lambda (line) (company-tip--wrapped-line line line-width)) it)
@@ -453,13 +467,17 @@ either 'top, meaning showing the doc on the top side, or 'bottom, meaning bottom
 side."
   (let* ((ov company-pseudo-tooltip-overlay)
          (ncandidates (length company-candidates))
+         (company-nl (nth 2 (overlay-get ov 'company-replacement-args)))
          (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
          (tooltip-height (abs (overlay-get ov 'company-height)))
          (tooltip-string (overlay-get ov 'company-display))
          (tooltip-strings
-          (if tooltip-abovep
-              (cl-subseq (s-lines tooltip-string) 0 -1)
-            (s-lines tooltip-string))))
+          (cond
+           (tooltip-abovep
+            (cl-subseq (s-lines tooltip-string) 0 -1))
+           (company-nl
+            (cl-subseq (s-lines tooltip-string) 1))
+           (t (s-lines tooltip-string)))))
     (cond
      ((eq position 'top)
       (if tooltip-abovep
@@ -539,7 +557,7 @@ side."
               doc-strings-top-bottom)
           (or
            ;; Prefer show on right
-           (and (> remaining-cols-right 5)
+           (and (> remaining-cols-right company-tip-min-cols-if-show-on-right)
                 (setq doc-strings-right (company-tip--format-string doc remaining-cols-right))
                 (and (<= (length doc-strings-right) window-height)
                      (company-tip--render-sidewise doc-strings-right 'right)))
@@ -571,7 +589,6 @@ side."
 
 (defun company-tip--set-timer ()
   "Set timer for tip to pop up."
-  (company-tip--hide)
   (when (or (null company-tip--timer)
             (eq this-command #'company-tip--manual-begin))
     (setq company-tip--timer
