@@ -98,13 +98,12 @@ Only the `background' is used in this face."
   "`company-mode' front-end showing documentation in a popup."
   (pcase command
     (`pre-command
-     (company-tip--hide))
-     (company-tip--cancel-timer)
+     (company-tip--hide)
+     (company-tip--cancel-timer))
     (`post-command
      (company-tip--hide)
      (when company-pseudo-tooltip-overlay
-       (company-tip--set-timer)))
-    ))
+       (company-tip--set-timer)))))
 
 (defun company-tip--skip-footers-backwards ()
   "Skip backwards over footers and blank lines."
@@ -584,8 +583,7 @@ side."
                    ((>= area-bottom (max area-right area-left area-top))
                     (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
                     (company-tip--render-stackwise
-                     (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-bottom)) 'bottom))
-                   )))))))))
+                     (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-bottom)) 'bottom)))))))))))
 
 (defun company-tip--set-timer ()
   "Set timer for tip to pop up."
