@@ -56,36 +56,19 @@ be triggered manually using `company-tip-manual-begin'."
                  (const :tag "Don't popup help automatically" nil))
   :group 'company-tip)
 
-(defcustom company-tip-max-lines nil
-  "When not NIL, limits the number of lines in the popup."
-  :type '(choice (integer :tag "Max lines to show in popup")
-                 (const :tag "Don't limit the number of lines shown" nil))
-  :group 'company-tip)
-
 (defcustom company-tip-min-cols-if-show-on-right 5
   "The minimum number of columns if the doc is to be shown on the right side.
 
 The doc will be preferred showing on the right side.  But if the actual number
- of columns is smaller than this, the doc will look to the other sides."
+of columns is smaller than this variable, the doc will look to the other sides."
   :type 'integer
   :group 'company-tip)
 
 (defface company-tip-background
   '((((background light)) :background "#6F6F6F")
-    (t :background "#272A36"))
+    (t :background "#ABABAB"))
   "Background color of the documentation.
 Only the `background' is used in this face."
-  :group 'company-tip)
-
-(defface company-tip-header
-  '((t :foreground "black"
-       :background "deep sky blue"))
-  "Face used on the header."
-  :group 'company-tip)
-
-(defface company-tip-url
-  '((t :inherit link))
-  "Face used on links."
   :group 'company-tip)
 
 (defvar company-tip-overlays nil
@@ -117,20 +100,11 @@ Only the `background' is used in this face."
                (looking-at-p "^\\s-*$")))
     (forward-line -1)))
 
-(defun company-tip--goto-max-line ()
-  "Go to last line to display in popup."
-  (if company-tip-max-lines
-      (forward-line company-tip-max-lines)
-    (goto-char (point-max))))
-
 (defun company-tip--docstring-from-buffer (start)
   "Fetch docstring from START."
-  (goto-char start)
-  (company-tip--goto-max-line)
-  (let ((truncated (< (point-at-eol) (point-max))))
-    (company-tip--skip-footers-backwards)
-    (list :doc (buffer-substring-no-properties start (point-at-eol))
-          :truncated truncated)))
+  (goto-char (point-max))
+  (company-tip--skip-footers-backwards)
+  (buffer-substring-no-properties start (point-at-eol)))
 
 (defun company-tip--completing-read (prompt candidates &rest rest)
   "`cider', and probably other libraries, prompt the user to
@@ -139,33 +113,23 @@ just grab the first candidate and press forward."
   (car candidates))
 
 (defun company-tip--fetch-docstring (backend)
-  "Fetch docstring from BACKEND."
-  (let ((tip-str (company-call-backend 'tip-string backend)))
-    (if (stringp tip-str)
+  "Fetch docstring from BACKEND.
+Via either `quickhelp-string' command or `doc-buffer' command."
+  (or
+   (let ((doc-str (company-call-backend 'quickhelp-string backend)))
+    (when (and (stringp doc-str) (not (string-empty-p doc-str)))
         (with-temp-buffer
-          (insert tip-str)
-          (company-tip--docstring-from-buffer (point-min)))
-      (let ((doc (company-call-backend 'doc-buffer backend)))
-        (when doc
-          ;; The company backend can either return a buffer with the doc or a
-          ;; cons containing the doc buffer and a position at which to start
-          ;; reading.
-          (let ((doc-buffer (if (consp doc) (car doc) doc))
-                (doc-begin (when (consp doc) (cdr doc))))
-            (with-current-buffer doc-buffer
-              (company-tip--docstring-from-buffer (or doc-begin (point-min))))))))))
-
-(defun company-tip--doc (selected)
-  "Get docstring for SELECTED candidate."
-  (cl-letf (((symbol-function 'completing-read)
-             #'company-tip--completing-read))
-    (let* ((doc-and-meta (company-tip--fetch-docstring selected))
-           (truncated (plist-get doc-and-meta :truncated))
-           (doc (plist-get doc-and-meta :doc)))
-      (unless (member doc '(nil ""))
-        (if truncated
-            (concat doc "\n\n[...]")
-          doc)))))
+          (insert doc-str)
+          (company-tip--docstring-from-buffer (point-min)))))
+   (let ((doc (company-call-backend 'doc-buffer backend)))
+     (when doc
+       ;; The company backend can either return a buffer with the doc or a
+       ;; cons containing the doc buffer and a position at which to start
+       ;; reading.
+       (let ((doc-buffer (if (consp doc) (car doc) doc))
+             (doc-begin (when (consp doc) (cdr doc))))
+         (with-current-buffer doc-buffer
+           (company-tip--docstring-from-buffer (or doc-begin (point-min)))))))))
 
 (defun company-tip--manual-begin ()
   "Manually trigger the `company-tip' popup for the currently active `company' completion candidate."
@@ -529,61 +493,64 @@ side."
   (while-no-input
     (let* ((selected (nth company-selection company-candidates))
            (doc (let ((inhibit-message t))
-                  (ignore-errors (company-tip--doc selected))))
-           (ov company-pseudo-tooltip-overlay)
-           (tooltip-width (overlay-get ov 'company-width))
-           (tooltip-height (abs (overlay-get ov 'company-height)))
-           (company-column (overlay-get ov 'company-column))
-           (window-width (company--window-width))
-           (window-height (company--window-height))
-           (horizontal-span (+ window-width (window-hscroll)))
-           (tooltip-column (min (+ 1 (- horizontal-span tooltip-width)) company-column))
-           (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
-           (current-row (cdr (company--col-row (- (point) 1))))
-           (remaining-cols-right
-            (- (+ window-width (window-hscroll)) tooltip-column tooltip-width 2))
-           (remaining-cols-left
-            (- tooltip-column (window-hscroll) 5))
-           (remaining-rows-top
-            (- current-row
-               (if tooltip-abovep (min tooltip-height (length company-candidates)) 0)))
-           (remaining-rows-bottom
-            (- window-height current-row
-               (if tooltip-abovep 0 (min tooltip-height (length company-candidates))) 1)))
-      (when (and ov doc)
-        (let (doc-strings-right
-              doc-strings-left
-              doc-strings-top-bottom)
-          (or
-           ;; Prefer show on right
-           (and (> remaining-cols-right company-tip-min-cols-if-show-on-right)
-                (setq doc-strings-right (company-tip--format-string doc remaining-cols-right))
-                (and (<= (length doc-strings-right) window-height)
-                     (company-tip--render-sidewise doc-strings-right 'right)))
-           ;; If no enough space on the right, show on the side with the most space
-           (and t
-                (let* ((area-right (* remaining-cols-right window-height))
-                       (area-left (* remaining-cols-left window-height))
-                       (area-top (* remaining-rows-top window-width))
-                       (area-bottom (* remaining-rows-bottom window-width)))
-                  (cond
-                   ((>= area-right (max area-left area-top area-bottom))
-                    (or doc-strings-right
-                        (setq doc-strings-right (company-tip--format-string doc remaining-cols-right)))
-                    (company-tip--render-sidewise
-                     (cl-subseq doc-strings-right 0 (min (length doc-strings-right) window-height)) 'right))
-                   ((>= area-left (max area-right area-top area-bottom))
-                    (setq doc-strings-left (company-tip--format-string doc remaining-cols-left))
-                    (company-tip--render-sidewise
-                     (cl-subseq doc-strings-left 0 (min (length doc-strings-left) window-height)) 'left))
-                   ((>= area-top (max area-right area-left area-bottom))
-                    (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
-                    (company-tip--render-stackwise
-                     (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-top)) 'top))
-                   ((>= area-bottom (max area-right area-left area-top))
-                    (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
-                    (company-tip--render-stackwise
-                     (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-bottom)) 'bottom)))))))))))
+                  (company-tip--fetch-docstring selected))))
+      (when doc
+        (let*
+            ((ov company-pseudo-tooltip-overlay)
+             (tooltip-width (overlay-get ov 'company-width))
+             (tooltip-height (abs (overlay-get ov 'company-height)))
+             (company-column (overlay-get ov 'company-column))
+             (window-width (company--window-width))
+             (window-height (company--window-height))
+             (horizontal-span (+ window-width (window-hscroll)))
+             (tooltip-column (min (+ 1 (- horizontal-span tooltip-width)) company-column))
+             (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
+             (current-row (cdr (company--col-row (- (point) 1))))
+             (remaining-cols-right
+              (- (+ window-width (window-hscroll)) tooltip-column tooltip-width 2)))
+          (when (and ov doc)
+            (let (doc-strings-right
+                  doc-strings-left
+                  doc-strings-top-bottom)
+              (or
+               ;; Prefer show on right
+               (and (> remaining-cols-right company-tip-min-cols-if-show-on-right)
+                    (setq doc-strings-right (company-tip--format-string doc remaining-cols-right))
+                    (and (<= (length doc-strings-right) window-height)
+                         (company-tip--render-sidewise doc-strings-right 'right)))
+               ;; If no enough space on the right, show on the side with the most space
+               ;; The doc will be truncated if necessary
+               (and t
+                    (let* ((remaining-cols-left
+                            (- tooltip-column (window-hscroll) 5))
+                           (remaining-rows-top
+                            (- current-row
+                               (if tooltip-abovep (min tooltip-height (length company-candidates)) 0)))
+                           (remaining-rows-bottom
+                            (- window-height current-row
+                               (if tooltip-abovep 0 (min tooltip-height (length company-candidates))) 1))
+                           (area-right (* remaining-cols-right window-height))
+                           (area-left (* remaining-cols-left window-height))
+                           (area-top (* remaining-rows-top window-width))
+                           (area-bottom (* remaining-rows-bottom window-width)))
+                      (cond
+                       ((>= area-right (max area-left area-top area-bottom))
+                        (or doc-strings-right
+                            (setq doc-strings-right (company-tip--format-string doc remaining-cols-right)))
+                        (company-tip--render-sidewise
+                         (cl-subseq doc-strings-right 0 (min (length doc-strings-right) window-height)) 'right))
+                       ((>= area-left (max area-right area-top area-bottom))
+                        (setq doc-strings-left (company-tip--format-string doc remaining-cols-left))
+                        (company-tip--render-sidewise
+                         (cl-subseq doc-strings-left 0 (min (length doc-strings-left) window-height)) 'left))
+                       ((>= area-top (max area-right area-left area-bottom))
+                        (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
+                        (company-tip--render-stackwise
+                         (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-top)) 'top))
+                       ((>= area-bottom (max area-right area-left area-top))
+                        (setq doc-strings-top-bottom (company-tip--format-string doc (- window-width 3)))
+                        (company-tip--render-stackwise
+                         (cl-subseq doc-strings-top-bottom 0 (min (length doc-strings-top-bottom) remaining-rows-bottom)) 'bottom)))))))))))))
 
 (defun company-tip--set-timer ()
   "Set timer for tip to pop up."
@@ -601,13 +568,11 @@ side."
 
 (defun company-tip--enable ()
   "Enable company tip."
-  (add-hook 'focus-out-hook #'company-cancel nil t)
   (make-local-variable 'company-frontends)
   (add-to-list 'company-frontends 'company-tip-frontend :append))
 
 (defun company-tip--disable ()
   "Disable company tip."
-  (remove-hook 'focus-out-hook #'company-cancel t)
   (company-tip--cancel-timer)
   (setq-local company-frontends (delq 'company-tip-frontend company-frontends)))
 
