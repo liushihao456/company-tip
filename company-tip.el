@@ -131,7 +131,8 @@ Via either `quickhelp-string' command or `doc-buffer' command."
        (let ((doc-buffer (if (consp doc) (car doc) doc))
              (doc-begin (when (consp doc) (cdr doc))))
          (with-current-buffer doc-buffer
-           (company-tip--docstring-from-buffer (or doc-begin (point-min)))))))))
+           (let ((doc-str (company-tip--docstring-from-buffer (or doc-begin (point-min)))))
+             (and doc-str (not (string-blank-p doc-str)) doc-str))))))))
 
 (defun company-tip--manual-begin ()
   "Manually trigger the `company-tip' popup for the currently active `company' completion candidate."
@@ -357,14 +358,14 @@ DOC-POSITION indicates at which side the doc will be rendered."
   "Get the layout for doc parts.  DOC-LINES-LENGTH is the number of lines of doc."
   (let* ((rows-above (cdr (company--col-row (- (point) 1))))
          (rows-below (- (company--window-height) 1 rows-above))
-         (tooltip-height
-          (min
-           rows-below
-           (abs (overlay-get company-pseudo-tooltip-overlay 'company-height))))
          (tooltip-abovep
           (nth 3
                (overlay-get
-                company-pseudo-tooltip-overlay 'company-replacement-args))))
+                company-pseudo-tooltip-overlay 'company-replacement-args)))
+         (tooltip-height
+          (min
+           (if tooltip-abovep rows-above rows-below)
+           (abs (overlay-get company-pseudo-tooltip-overlay 'company-height)))))
     (if tooltip-abovep
         (let* ((nlines-above
                 (min (max (- rows-above tooltip-height) 0)
