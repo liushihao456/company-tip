@@ -355,21 +355,27 @@ DOC-POSITION indicates at which side the doc will be rendered."
 
 (defun company-tip--get-layout (doc-lines-length)
   "Get the layout for doc parts.  DOC-LINES-LENGTH is the number of lines of doc."
-  (let* ((tooltip-height (abs (overlay-get company-pseudo-tooltip-overlay 'company-height)))
-         (tooltip-abovep (nth 3 (overlay-get company-pseudo-tooltip-overlay 'company-replacement-args)))
-         (current-row (cdr (company--col-row (- (point) 1)))))
+  (let* ((rows-above (cdr (company--col-row (- (point) 1))))
+         (rows-below (- (company--window-height) 1 rows-above))
+         (tooltip-height
+          (min
+           rows-below
+           (abs (overlay-get company-pseudo-tooltip-overlay 'company-height))))
+         (tooltip-abovep
+          (nth 3
+               (overlay-get
+                company-pseudo-tooltip-overlay 'company-replacement-args))))
     (if tooltip-abovep
         (let* ((nlines-above
-                (min (max (- current-row tooltip-height) 0)
+                (min (max (- rows-above tooltip-height) 0)
                      (max (- doc-lines-length tooltip-height) 0)))
                (nlines-matching-tooltip
                 (min tooltip-height
                      doc-lines-length))
                (nlines-current-line
-                (if (> doc-lines-length current-row) 1 0))
+                (if (> doc-lines-length rows-above) 1 0))
                (nlines-below
-                (min (- (company--window-height) current-row 1)
-                     (max (- doc-lines-length current-row 1) 0)))
+                (min rows-below (max (- doc-lines-length rows-above 1) 0)))
                (layout-alist '()))
           (when (> nlines-above 0)
             (!cons `(:above . ,nlines-above) layout-alist))
@@ -381,18 +387,17 @@ DOC-POSITION indicates at which side the doc will be rendered."
             (!cons `(:below . ,nlines-below) layout-alist))
           (nreverse layout-alist))
 
-      (let* ((nrows-below-current-line (- (company--window-height) current-row 1))
-             (nlines-below
-              (min (max (- nrows-below-current-line tooltip-height) 0)
+      (let* ((nlines-below
+              (min (max (- rows-below tooltip-height) 0)
                    (max (- doc-lines-length tooltip-height) 0)))
              (nlines-matching-tooltip
               (min tooltip-height
                    doc-lines-length))
              (nlines-current-line
-              (if (> doc-lines-length nrows-below-current-line) 1 0))
+              (if (> doc-lines-length rows-below) 1 0))
              (nlines-above
-              (min current-row
-                   (max (- doc-lines-length nrows-below-current-line 1) 0)))
+              (min rows-above
+                   (max (- doc-lines-length rows-below 1) 0)))
              (layout-alist '()))
         (when (> nlines-above 0)
           (!cons `(:above . ,nlines-above) layout-alist))
