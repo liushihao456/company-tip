@@ -1,9 +1,11 @@
 ;;; company-tip.el --- Popup documentation for completion candidates  -*- lexical-binding: t; -*-
 
+;; Copyright (c) 2020 <liushihao@pku.edu.cn>
+
 ;; Author: Shihao Liu <liushihao@pku.edu.com>
 ;; Keywords: company popup documentation tip
-;; Version: 2.2.0
-;; Package-Requires: ((emacs "24.3") (company "0.8.9"))
+;; Version: 1.0.0
+;; Package-Requires: ((emacs "24.3") (s "1.9.0") (cl-lib "0.5") (dash "2.10.0") (company "0.8.9"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -117,7 +119,7 @@ just grab the first candidate and press forward."
 Via either `quickhelp-string' command or `doc-buffer' command."
   (or
    (let ((doc-str (company-call-backend 'quickhelp-string backend)))
-    (when (and (stringp doc-str) (not (string-empty-p doc-str)))
+    (when (and (stringp doc-str) (not (string-blank-p doc-str)))
         (with-temp-buffer
           (insert doc-str)
           (company-tip--docstring-from-buffer (point-min)))))
