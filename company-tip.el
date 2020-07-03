@@ -1,8 +1,6 @@
 ;;; company-tip.el --- Popup documentation for completion candidates  -*- lexical-binding: t; -*-
 
-;; Copyright (c) 2020 <liushihao@pku.edu.cn>
-
-;; Author: Shihao Liu <liushihao@pku.edu.com>
+;; Author: Shihao Liu <liushihao@pku.edu.cn>
 ;; Keywords: company popup documentation tip
 ;; Version: 1.0.0
 ;; Package-Requires: ((emacs "24.3") (s "1.9.0") (cl-lib "0.5") (dash "2.10.0") (company "0.8.9"))
