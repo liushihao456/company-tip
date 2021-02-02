@@ -104,7 +104,8 @@ Only the `background' is used in this face."
   "Fetch docstring from START."
   (goto-char (point-max))
   (company-tip--skip-footers-backwards)
-  (buffer-substring-no-properties start (point-at-eol)))
+  ;; (buffer-substring-no-properties start (point-at-eol))
+  (buffer-substring start (point-at-eol)))
 
 (defun company-tip--completing-read (prompt candidates &rest rest)
   "`cider', and probably other libraries, prompt the user to
@@ -163,17 +164,19 @@ There might be words longer than LINE-WIDTH, in which case they have to be
 truncated."
   (let ((line (if (> (string-width line) len) (concat " "(substring line 0 len) " ")
                 (concat " " line (make-string (- len (string-width line)) ?\s) " "))))
-    (add-face-text-property 0 (length line) (list :background (face-background 'company-tip-background nil t) :foreground (face-foreground 'default)) t line)
+    (add-face-text-property 0 (length line) (list :background (face-background 'company-tip-background nil t)) t line)
     line))
 
 (defun company-tip--format-string (string line-width)
   "Wrap STRING to max width LINE-WIDTH, and truncated at max height HEIGHT."
-  (--> string
-       (split-string it "[\n\v\f\r](?![\n\v\f\r])")
-       (-map (lambda (line) (company-tip--wrapped-line line line-width)) it)
-       (string-join it "\n")
-       (s-lines it)
-       (-map (lambda (line) (company-tip--padding line line-width)) it)))
+  (let* ((lines (--> string
+                     (s-lines it)
+                     (-map (lambda (line) (company-tip--wrapped-line line line-width)) it)
+                     (string-join it "\n")
+                     (s-lines it)
+                     ))
+         (doc-tip-line-width (min line-width (-max (-map (lambda (line) (length line)) lines)))))
+    (-map (lambda (line) (company-tip--padding line doc-tip-line-width)) lines)))
 
 (defun company-tip--pos-after-lines (start n)
   "Get the position at START + forward N lines."
@@ -190,9 +193,18 @@ The 3rd arg POSITION, indicates at which side the doc will be rendered."
          (company-column (overlay-get ov 'company-column))
          (horizontal-span (+ (company--window-width) (window-hscroll)))
          (tooltip-column (min (+ 1 (- horizontal-span tooltip-width)) company-column))
-         (index-start (if (eq position 'right)
-                          (+ tooltip-column tooltip-width)
-                        (1+ (window-hscroll)))))
+         (doc-strings-width (length (car doc-strings)))
+         (index-start (pcase position
+                        ('right
+                         (+ tooltip-column tooltip-width))
+                        ('left
+                         (- tooltip-column doc-strings-width 2))
+                        (_
+                         (cond
+                          ((>= (- horizontal-span tooltip-column) doc-strings-width) tooltip-column)
+                          (t (- horizontal-span doc-strings-width))
+                          ;; (1+ (window-hscroll))
+                          )))))
     (company-tip--merge-lines old-strings doc-strings index-start)))
 
 (defun company-tip--merge-lines (lines1 lines2 start)
