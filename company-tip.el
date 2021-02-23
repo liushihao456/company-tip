@@ -162,7 +162,7 @@ Then add one whitespace to begin and end of it.
 
 There might be words longer than LINE-WIDTH, in which case they have to be
 truncated."
-  (let ((line (if (> (string-width line) len) (concat " "(substring line 0 len) " ")
+  (let ((line (if (> (string-width line) len) (concat " " (substring line 0 len) " ")
                 (concat " " line (make-string (- len (string-width line)) ?\s) " "))))
     (add-face-text-property 0 (length line) (list :background (face-background 'company-tip-background nil t)) t line)
     line))
@@ -193,7 +193,9 @@ The 3rd arg POSITION, indicates at which side the doc will be rendered."
          (company-column (overlay-get ov 'company-column))
          (horizontal-span (+ (company--window-width) (window-hscroll)))
          (tooltip-column (min (+ 1 (- horizontal-span tooltip-width)) company-column))
-         (doc-strings-width (length (car doc-strings)))
+         (doc-strings-width (--> doc-strings
+                                 (mapcar 'length it)
+                                 (seq-max it)))
          (index-start (pcase position
                         ('right
                          (+ tooltip-column tooltip-width))
@@ -308,20 +310,23 @@ indicates at which side the doc will be rendered."
 
 The 1st arg DOC-LINES is a list containing doc string lines.  The 2nd arg
 DOC-POSITION indicates at which side the doc will be rendered."
-  (let* ((ov company-pseudo-tooltip-overlay)
+  (let* ((stackwise-p (memq doc-position '(top bottom)))
+         (ov company-pseudo-tooltip-overlay)
          (ncandidates (length company-candidates))
          (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
          (tooltip-height (abs (overlay-get ov 'company-height)))
+         (n-noncandidate-lines (max 0 (- tooltip-height ncandidates)))
          (company-nl (nth 2 (overlay-get ov 'company-replacement-args)))
          (tooltip-lines (s-lines (overlay-get ov 'company-display)))
          (use-after-string (overlay-get ov 'after-string))
          (tooltip-popped-nl
           (and use-after-string company-nl (pop tooltip-lines))))
-    (--> (if (and tooltip-abovep (< (length doc-lines) (- (length tooltip-lines) 1))
-                  (< ncandidates tooltip-height))
-             (append (make-list (- (length tooltip-lines) (length doc-lines) 1) "")
-                     doc-lines)
-           doc-lines)
+    (--> (if tooltip-abovep
+             (append (make-list (max 0 (- n-noncandidate-lines (length doc-lines))) "")
+                     doc-lines
+                     (when stackwise-p (make-list ncandidates "")))
+           (append (when stackwise-p (make-list ncandidates ""))
+                   doc-lines))
          (company-tip--merge-docstrings tooltip-lines it doc-position)
          ;; (company-tip--merge-docstrings tooltip-lines doc-lines doc-position)
          (if tooltip-popped-nl (cons tooltip-popped-nl it) it)
@@ -465,14 +470,15 @@ side."
           (let* ((doc-part-matching-tooltip
                   (and (< ncandidates tooltip-height)
                        (append
-                        (if (< (length doc-strings) (- tooltip-height ncandidates))
-                            (mapcar
-                             (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
-                             (cl-subseq tooltip-strings 0 (- (- tooltip-height ncandidates) (length doc-strings)))))
+                        ;; (if (< (length doc-strings) (- tooltip-height ncandidates))
+                        ;;     (mapcar
+                        ;;      (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
+                        ;;      (cl-subseq tooltip-strings 0 (- (- tooltip-height ncandidates) (length doc-strings)))))
                         (cl-subseq doc-strings (- (min (length doc-strings) (- tooltip-height ncandidates))))
-                        (mapcar
-                         (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
-                         (cl-subseq tooltip-strings (- ncandidates))))))
+                        ;; (mapcar
+                        ;;  (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
+                        ;;  (cl-subseq tooltip-strings (- ncandidates)))
+                        )))
 
                  (doc-part-nlines-above
                   (if doc-part-matching-tooltip
@@ -491,8 +497,12 @@ side."
           (company-tip--render-doc-part-below doc-strings position)
         (let* ((doc-part-matching-tooltip
                 (and (< ncandidates tooltip-height)
-                     (append (mapcar (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll))))) (cl-subseq tooltip-strings 0 ncandidates))
-                             (cl-subseq doc-strings 0 (min (length doc-strings) (- tooltip-height ncandidates))))))
+                     (append
+                      ;; (mapcar
+                      ;;  (lambda (l) (substring l (min (length l) (window-hscroll))))
+                      ;;  ;; (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
+                      ;;  (cl-subseq tooltip-strings 0 ncandidates))
+                      (cl-subseq doc-strings 0 (min (length doc-strings) (- tooltip-height ncandidates))))))
 
                (doc-part-nlines-below
                 (if doc-part-matching-tooltip
