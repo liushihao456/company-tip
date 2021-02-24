@@ -203,7 +203,7 @@ The 3rd arg POSITION, indicates at which side the doc will be rendered."
                          (- tooltip-column doc-strings-width 2))
                         (_
                          (cond
-                          ((>= (- horizontal-span tooltip-column) doc-strings-width) tooltip-column)
+                          ((>= (- horizontal-span (- tooltip-column 1)) doc-strings-width) (- tooltip-column 1))
                           (t (- horizontal-span doc-strings-width))
                           ;; (1+ (window-hscroll))
                           )))))
@@ -482,7 +482,8 @@ side."
 
                  (doc-part-nlines-above
                   (if doc-part-matching-tooltip
-                      (- (+ (length doc-strings) ncandidates) (length doc-part-matching-tooltip))
+                      (- (length doc-strings);; (+ (length doc-strings) ncandidates)
+                         (length doc-part-matching-tooltip))
                     (length doc-strings)))
                  (doc-part-lines-above
                   (and (> doc-part-nlines-above 0)
@@ -506,7 +507,8 @@ side."
 
                (doc-part-nlines-below
                 (if doc-part-matching-tooltip
-                    (- (+ (length doc-strings) ncandidates) (length doc-part-matching-tooltip))
+                    (- (length doc-strings);; (+ (length doc-strings) ncandidates)
+                       (length doc-part-matching-tooltip))
                   (length doc-strings)))
                (doc-part-lines-below
                 (and (> doc-part-nlines-below 0)
