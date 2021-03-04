@@ -65,8 +65,7 @@ of columns is smaller than this variable, the doc will look to the other sides."
   :group 'company-tip)
 
 (defface company-tip-background
-  '((((background light)) :background "#6F6F6F")
-    (t :background "#ABABAB"))
+  '((t :background "#222222"))
   "Background color of the documentation.
 Only the `background' is used in this face."
   :group 'company-tip)
@@ -164,7 +163,8 @@ There might be words longer than LINE-WIDTH, in which case they have to be
 truncated."
   (let ((line (if (> (string-width line) len) (concat " " (substring line 0 len) " ")
                 (concat " " line (make-string (- len (string-width line)) ?\s) " "))))
-    (add-face-text-property 0 (length line) (list :background (face-background 'company-tip-background nil t)) t line)
+    (add-face-text-property 0 (length line) (list :background (face-background 'company-tooltip nil t)) t line)
+    ;; (add-face-text-property 0 (length line) (list :background (face-background 'company-tip-background nil t)) t line)
     line))
 
 (defun company-tip--format-string (string line-width)
