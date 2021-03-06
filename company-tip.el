@@ -316,15 +316,19 @@ DOC-POSITION indicates at which side the doc will be rendered."
          (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
          (tooltip-height (abs (overlay-get ov 'company-height)))
          (n-noncandidate-lines (max 0 (- tooltip-height ncandidates)))
+         (n-doc-lines (length doc-lines))
          (company-nl (nth 2 (overlay-get ov 'company-replacement-args)))
          (tooltip-lines (s-lines (overlay-get ov 'company-display)))
          (use-after-string (overlay-get ov 'after-string))
          (tooltip-popped-nl
           (and use-after-string company-nl (pop tooltip-lines))))
     (--> (if tooltip-abovep
-             (append (make-list (max 0 (- n-noncandidate-lines (length doc-lines))) "")
-                     doc-lines
-                     (when stackwise-p (make-list ncandidates "")))
+             (if stackwise-p
+                 (append (make-list (max 0 (- n-noncandidate-lines n-doc-lines)) "")
+                         doc-lines
+                         (make-list ncandidates ""))
+               (append (make-list (min n-noncandidate-lines (- tooltip-height n-doc-lines)) "")
+                       doc-lines))
            (append (when stackwise-p (make-list ncandidates ""))
                    doc-lines))
          (company-tip--merge-docstrings tooltip-lines it doc-position)
