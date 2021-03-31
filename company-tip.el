@@ -1,27 +1,30 @@
 ;;; company-tip.el --- Popup documentation for completion candidates  -*- lexical-binding: t; -*-
 
-;; Author: Shihao Liu <liushihao@pku.edu.cn>
+;; Author: Shihao Liu
 ;; Keywords: company popup documentation tip
 ;; Version: 1.0.0
 ;; Package-Requires: ((emacs "24.3") (s "1.9.0") (cl-lib "0.5") (dash "2.10.0") (company "0.8.9"))
 
 ;; This file is not part of GNU Emacs.
-
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
+;;
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation; either version 2, or
 ;; (at your option) any later version.
-
+;;
 ;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+;; General Public License for more details.
+;;
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program; see the file COPYING.  If not, write to
+;; the Free Software Foundation, Inc., 51 Franklin Street, Fifth
+;; Floor, Boston, MA 02110-1301, USA.
+;;
 
 ;;; Commentary:
-
+;;
 ;; When idling on a completion candidate the documentation for the
 ;; candidate will pop up after `company-tip-delay' seconds.
 ;;
@@ -29,13 +32,16 @@
 ;; is not enough space on the right side, it will check the right, left,
 ;; top and bottom side, and show on the one with the most space.  The
 ;; documentation string may be truncated if it is too long.
+;; --------------------------------------
 
 ;;; Usage:
-;;  put (company-tip-mode) in your init.el to activate
-;;  `company-tip-mode'.
-
+;;
+;; put (company-tip-mode) in your init.el to activate
+;; `company-tip-mode'.
+;;
 ;; You can adjust the time it takes for the documentation to pop up by
 ;; changing `company-tip-delay'
+;; --------------------------------------
 
 ;;; Code:
 (require 'company)
