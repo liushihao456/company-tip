@@ -263,7 +263,7 @@ DOC-POSITION indicates at which side the doc will be rendered."
          (string-join it "\n")
          (if (< (overlay-start ov) (overlay-end ov))
              (overlay-put ov 'display it)
-           (overlay-put ov 'after-string it)))
+           (overlay-put ov 'before-string it)))
     (overlay-put ov 'window (selected-window))))
 
 (defun company-tip--render-doc-part-current-line (doc-lines doc-position)
@@ -279,14 +279,14 @@ indicates at which side the doc will be rendered."
          (tooltip-lines
           (s-lines
            (overlay-get company-pseudo-tooltip-overlay 'company-display)))
-         (use-after-string
-          (overlay-get company-pseudo-tooltip-overlay 'after-string))
+         (use-before-string
+          (overlay-get company-pseudo-tooltip-overlay 'before-string))
          (ov-start-col
           (save-excursion
             (goto-char (overlay-start company-pseudo-tooltip-overlay))
             (current-column)))
          (tooltip-popped-nl
-          (and use-after-string company-nl (pop tooltip-lines))))
+          (and use-before-string company-nl (pop tooltip-lines))))
 
     (if (and (eq doc-position 'right) tooltip-popped-nl)
 
@@ -297,7 +297,7 @@ indicates at which side the doc will be rendered."
              (cons it tooltip-lines)
              (string-join it "\n")
              (overlay-put company-pseudo-tooltip-overlay 'company-display it)
-             (overlay-put company-pseudo-tooltip-overlay 'after-string it))
+             (overlay-put company-pseudo-tooltip-overlay 'before-string it))
 
       (let* ((ov-start (line-beginning-position))
              (ov-end (line-end-position))
@@ -308,7 +308,7 @@ indicates at which side the doc will be rendered."
              (or (put-text-property (current-column) (+ 1 (current-column)) 'cursor (length it) it) it)
              (if (< ov-start ov-end)
                  (overlay-put ov 'display it)
-               (overlay-put ov 'after-string it)))
+               (overlay-put ov 'before-string it)))
         (overlay-put ov 'window (selected-window))))))
 
 (defun company-tip--render-doc-part-matching-tooltip (doc-lines doc-position)
@@ -325,9 +325,9 @@ DOC-POSITION indicates at which side the doc will be rendered."
          (n-doc-lines (length doc-lines))
          (company-nl (nth 2 (overlay-get ov 'company-replacement-args)))
          (tooltip-lines (s-lines (overlay-get ov 'company-display)))
-         (use-after-string (overlay-get ov 'after-string))
+         (use-before-string (overlay-get ov 'before-string))
          (tooltip-popped-nl
-          (and use-after-string company-nl (pop tooltip-lines))))
+          (and use-before-string company-nl (pop tooltip-lines))))
     (--> (if tooltip-abovep
              (if stackwise-p
                  (append (make-list (max 0 (- n-noncandidate-lines n-doc-lines)) "")
@@ -342,7 +342,7 @@ DOC-POSITION indicates at which side the doc will be rendered."
          (if tooltip-popped-nl (cons tooltip-popped-nl it) it)
          (string-join it "\n")
          (overlay-put company-pseudo-tooltip-overlay
-                      (if use-after-string 'after-string 'display) it))))
+                      (if use-before-string 'before-string 'display) it))))
 
 (defun company-tip--render-doc-part-below (doc-lines doc-position)
   "Render a part of the doc below the company tooltip.
@@ -366,16 +366,16 @@ DOC-POSITION indicates at which side the doc will be rendered."
              (line-beginning-position) (1+ tooltip-height))))
          (ov-end (company-tip--pos-after-lines ov-start (1+ n-lines)))
          (buffer-lines (s-lines (buffer-substring ov-start ov-end)))
-         (use-after-string (>= ov-start ov-end))
+         (use-before-string (>= ov-start ov-end))
          (ov (make-overlay ov-start ov-end)))
     (!cons ov company-tip-overlays)
     (--> (company-tip--merge-docstrings buffer-lines doc-lines doc-position)
-         (if (and use-after-string
+         (if (and use-before-string
                   (or tooltip-abovep (< (length tooltip-lines) (+ 1 tooltip-height))))
              (cons "" it) it)
          (string-join it "\n")
-         (if use-after-string
-             (overlay-put ov 'after-string it)
+         (if use-before-string
+             (overlay-put ov 'before-string it)
            (overlay-put ov 'display it)))
     (overlay-put ov 'window (selected-window))))
 
