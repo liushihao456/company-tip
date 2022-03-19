@@ -198,7 +198,10 @@ The 3rd arg POSITION, indicates at which side the doc will be rendered."
          (tooltip-width (overlay-get ov 'company-width))
          (company-column (overlay-get ov 'company-column))
          (horizontal-span (+ (company--window-width) (window-hscroll)))
-         (tooltip-column (min (+ 1 (- horizontal-span tooltip-width)) company-column))
+         (company-margin-using-image-p (and (display-graphic-p)
+                                            (image-type-available-p 'svg)))
+         (company-column-minus-left-margin (max 1 (- company-column (if company-margin-using-image-p 1 2))))
+         (tooltip-column (min (+ 1 (- horizontal-span tooltip-width)) company-column-minus-left-margin))
          (doc-strings-width (--> doc-strings
                                  (mapcar 'length it)
                                  (seq-max it)))
@@ -350,9 +353,6 @@ DOC-POSITION indicates at which side the doc will be rendered."
 The 1st arg DOC-LINES is a list containing doc string lines.  The 2nd arg
 DOC-POSITION indicates at which side the doc will be rendered."
   (let* ((n-lines (length doc-lines))
-         (tooltip-lines
-          (s-lines
-           (overlay-get company-pseudo-tooltip-overlay 'company-display)))
          (tooltip-height
           (abs (overlay-get company-pseudo-tooltip-overlay 'company-height)))
          (tooltip-abovep
@@ -366,18 +366,18 @@ DOC-POSITION indicates at which side the doc will be rendered."
              (line-beginning-position) (1+ tooltip-height))))
          (ov-end (company-tip--pos-after-lines ov-start (1+ n-lines)))
          (buffer-lines (s-lines (buffer-substring ov-start ov-end)))
-         (use-before-string (>= ov-start ov-end))
-         (ov (make-overlay ov-start ov-end)))
-    (!cons ov company-tip-overlays)
+         (use-before-string (overlay-get company-pseudo-tooltip-overlay 'before-string)))
     (--> (company-tip--merge-docstrings buffer-lines doc-lines doc-position)
-         (if (and use-before-string
-                  (or tooltip-abovep (< (length tooltip-lines) (+ 1 tooltip-height))))
-             (cons "" it) it)
          (string-join it "\n")
-         (if use-before-string
-             (overlay-put ov 'before-string it)
-           (overlay-put ov 'display it)))
-    (overlay-put ov 'window (selected-window))))
+         (concat
+          (overlay-get
+           company-pseudo-tooltip-overlay
+           (if use-before-string 'before-string 'display))
+          it)
+         (overlay-put
+          company-pseudo-tooltip-overlay
+          (if use-before-string 'before-string 'display)
+          it))))
 
 (defun company-tip--get-layout (doc-lines-length)
   "Get the layout for doc parts.  DOC-LINES-LENGTH is the number of lines of doc."
