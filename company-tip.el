@@ -73,11 +73,17 @@ of columns is smaller than this variable, the doc will look to the other sides."
 (defface company-tip-background
   '((t :background "#222222"))
   "Background color of the documentation.
-Only the `background' is used in this face."
+Only `background' is used in this face."
   :group 'company-tip)
 
-(defvar company-tip-overlays nil
+(defvar-local company-overlay-start nil
+  "Company overlay start.")
+
+(defvar-local company-tip-overlays nil
   "Tip overlays.")
+
+(defvar-local company-overlay-end nil
+  "Company overlay end.")
 
 (defvar-local company-tip--timer nil
   "Quickhelp idle timer.")
@@ -112,21 +118,15 @@ Only the `background' is used in this face."
   ;; (buffer-substring-no-properties start (point-at-eol))
   (buffer-substring start (point-at-eol)))
 
-(defun company-tip--completing-read (prompt candidates &rest rest)
-  "`cider', and probably other libraries, prompt the user to
-resolve ambiguous documentation requests.  Instead of failing we
-just grab the first candidate and press forward."
-  (car candidates))
-
 (defun company-tip--fetch-docstring (backend)
   "Fetch docstring from BACKEND.
 Via either `quickhelp-string' command or `doc-buffer' command."
   (or
    (let ((doc-str (company-call-backend 'quickhelp-string backend)))
-    (when (and (stringp doc-str) (not (string-blank-p doc-str)))
-        (with-temp-buffer
-          (insert doc-str)
-          (company-tip--docstring-from-buffer (point-min)))))
+     (when (and (stringp doc-str) (not (string-blank-p doc-str)))
+       (with-temp-buffer
+         (insert doc-str)
+         (company-tip--docstring-from-buffer (point-min)))))
    (let ((doc (company-call-backend 'doc-buffer backend)))
      (when doc
        ;; The company backend can either return a buffer with the doc or a
@@ -150,6 +150,10 @@ Via either `quickhelp-string' command or `doc-buffer' command."
 
 (defun company-tip--hide ()
   "Hide the current tip tip."
+  (when company-overlay-start
+    (move-overlay company-pseudo-tooltip-overlay company-overlay-start company-overlay-end)
+    (setq company-overlay-start nil)
+    (setq company-overlay-end nil))
   (when (> (length company-tip-overlays) 0)
     (seq-do 'delete-overlay company-tip-overlays)
     (setq company-tip-overlays nil)))
@@ -374,10 +378,11 @@ DOC-POSITION indicates at which side the doc will be rendered."
            company-pseudo-tooltip-overlay
            (if use-before-string 'before-string 'display))
           it)
-         (overlay-put
-          company-pseudo-tooltip-overlay
-          (if use-before-string 'before-string 'display)
-          it))))
+         (overlay-put company-pseudo-tooltip-overlay
+                      (if use-before-string 'before-string 'display) it))
+    (move-overlay company-pseudo-tooltip-overlay
+                  (overlay-start company-pseudo-tooltip-overlay)
+                  ov-end)))
 
 (defun company-tip--get-layout (doc-lines-length)
   "Get the layout for doc parts.  DOC-LINES-LENGTH is the number of lines of doc."
@@ -463,17 +468,18 @@ either 'top, meaning showing the doc on the top side, or 'bottom, meaning bottom
 side."
   (let* ((ov company-pseudo-tooltip-overlay)
          (ncandidates (length company-candidates))
-         (company-nl (nth 2 (overlay-get ov 'company-replacement-args)))
+         ;; (company-nl (nth 2 (overlay-get ov 'company-replacement-args)))
          (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
          (tooltip-height (abs (overlay-get ov 'company-height)))
-         (tooltip-string (overlay-get ov 'company-display))
-         (tooltip-strings
-          (cond
-           (tooltip-abovep
-            (cl-subseq (s-lines tooltip-string) 0 -1))
-           (company-nl
-            (cl-subseq (s-lines tooltip-string) 1))
-           (t (s-lines tooltip-string)))))
+         ;; (tooltip-string (overlay-get ov 'company-display))
+         ;; (tooltip-strings
+         ;;  (cond
+         ;;   (tooltip-abovep
+         ;;    (cl-subseq (s-lines tooltip-string) 0 -1))
+         ;;   (company-nl
+         ;;    (cl-subseq (s-lines tooltip-string) 1))
+         ;;   (t (s-lines tooltip-string))))
+         )
     (cond
      ((eq position 'top)
       (if tooltip-abovep
@@ -531,6 +537,8 @@ side."
 (defun company-tip--show ()
   "Show doc."
   (while-no-input
+    (setq company-overlay-start (overlay-start company-pseudo-tooltip-overlay))
+    (setq company-overlay-end (overlay-end company-pseudo-tooltip-overlay))
     (let* ((selected (nth company-selection company-candidates))
            (doc (let ((inhibit-message t))
                   (company-tip--fetch-docstring selected))))
