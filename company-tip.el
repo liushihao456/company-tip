@@ -79,13 +79,13 @@ Only `background' is used in this face."
 (defvar-local company-tip--company-overlay-start nil
   "Company overlay start.")
 
-(defvar-local company-tip--overlays nil
-  "Tip overlays.")
-
 (defvar-local company-tip-company--overlay-end nil
   "Company overlay end.")
 
-(defvar-local company-tip--timer nil
+(defvar company-tip--overlays nil
+  "Tip overlays.")
+
+(defvar company-tip--timer nil
   "Quickhelp idle timer.")
 
 (defun company-tip-frontend (command)
