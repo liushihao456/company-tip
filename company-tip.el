@@ -50,7 +50,7 @@
 (require 'dash)
 
 (defgroup company-tip nil
-  "Documentation popups for `company-mode'"
+  "Documentation popups for `company-mode'."
   :group 'company)
 
 (defcustom company-tip-delay 0.5
@@ -76,13 +76,13 @@ of columns is smaller than this variable, the doc will look to the other sides."
 Only `background' is used in this face."
   :group 'company-tip)
 
-(defvar-local company-overlay-start nil
+(defvar-local company-tip--company-overlay-start nil
   "Company overlay start.")
 
-(defvar-local company-tip-overlays nil
+(defvar-local company-tip--overlays nil
   "Tip overlays.")
 
-(defvar-local company-overlay-end nil
+(defvar-local company-tip-company--overlay-end nil
   "Company overlay end.")
 
 (defvar-local company-tip--timer nil
@@ -150,13 +150,13 @@ Via either `quickhelp-string' command or `doc-buffer' command."
 
 (defun company-tip--hide ()
   "Hide the current tip tip."
-  (when company-overlay-start
-    (move-overlay company-pseudo-tooltip-overlay company-overlay-start company-overlay-end)
-    (setq company-overlay-start nil)
-    (setq company-overlay-end nil))
-  (when (> (length company-tip-overlays) 0)
-    (seq-do 'delete-overlay company-tip-overlays)
-    (setq company-tip-overlays nil)))
+  (when company-tip--company-overlay-start
+    (move-overlay company-pseudo-tooltip-overlay company-tip--company-overlay-start company-tip-company--overlay-end)
+    (setq company-tip--company-overlay-start nil)
+    (setq company-tip-company--overlay-end nil))
+  (when (> (length company-tip--overlays) 0)
+    (seq-do 'delete-overlay company-tip--overlays)
+    (setq company-tip--overlays nil)))
 
 (defun company-tip--wrapped-line (line line-width)
   "Wrap a line of text LINE to max width LINE-WIDTH."
@@ -265,7 +265,7 @@ DOC-POSITION indicates at which side the doc will be rendered."
          (ov-start (company-tip--pos-after-lines ov-end (- n-lines)))
          (buffer-lines (s-lines (buffer-substring ov-start ov-end)))
          (ov (make-overlay ov-start ov-end)))
-    (!cons ov company-tip-overlays)
+    (!cons ov company-tip--overlays)
     (--> (company-tip--merge-docstrings buffer-lines doc-lines doc-position)
          (string-join it "\n")
          (if (< (overlay-start ov) (overlay-end ov))
@@ -309,7 +309,7 @@ indicates at which side the doc will be rendered."
       (let* ((ov-start (line-beginning-position))
              (ov-end (line-end-position))
              (ov (make-overlay ov-start ov-end)))
-        (!cons ov company-tip-overlays)
+        (!cons ov company-tip--overlays)
         (--> (company-tip--merge-docstrings (list current-buffer-line) doc-lines doc-position)
              (car it)
              (or (put-text-property (current-column) (+ 1 (current-column)) 'cursor (length it) it) it)
@@ -537,8 +537,8 @@ side."
 (defun company-tip--show ()
   "Show doc."
   (while-no-input
-    (setq company-overlay-start (overlay-start company-pseudo-tooltip-overlay))
-    (setq company-overlay-end (overlay-end company-pseudo-tooltip-overlay))
+    (setq company-tip--company-overlay-start (overlay-start company-pseudo-tooltip-overlay))
+    (setq company-tip-company--overlay-end (overlay-end company-pseudo-tooltip-overlay))
     (let* ((selected (nth company-selection company-candidates))
            (doc (let ((inhibit-message t))
                   (company-tip--fetch-docstring selected))))
