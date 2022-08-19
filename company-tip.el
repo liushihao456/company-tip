@@ -174,17 +174,14 @@ truncated."
   (let ((line (if (> (string-width line) len) (concat " " (substring line 0 len) " ")
                 (concat " " line (make-string (- len (string-width line)) ?\s) " "))))
     (add-face-text-property 0 (length line) (list :background (face-background 'company-tooltip nil t)) t line)
-    ;; (add-face-text-property 0 (length line) (list :background (face-background 'company-tip-background nil t)) t line)
     line))
 
 (defun company-tip--format-string (string line-width)
   "Wrap STRING to max width LINE-WIDTH, and truncated at max height HEIGHT."
   (let* ((lines (--> string
-                     (s-lines it)
-                     (-map (lambda (line) (company-tip--wrapped-line line line-width)) it)
-                     (string-join it "\n")
-                     (s-lines it)
-                     ))
+                     (replace-regexp "\\.\\n" "")
+                     (s-word-wrap (- line-width 2) it)
+                     (s-lines it)))
          (doc-tip-line-width (min line-width (-max (-map (lambda (line) (length line)) lines)))))
     (-map (lambda (line) (company-tip--padding line doc-tip-line-width)) lines)))
 
@@ -218,7 +215,6 @@ The 3rd arg POSITION, indicates at which side the doc will be rendered."
                          (cond
                           ((>= (- horizontal-span (- tooltip-column 1)) doc-strings-width) (- tooltip-column 1))
                           (t (- horizontal-span doc-strings-width))
-                          ;; (1+ (window-hscroll))
                           )))))
     (company-tip--merge-lines old-strings doc-strings index-start)))
 
@@ -345,7 +341,6 @@ DOC-POSITION indicates at which side the doc will be rendered."
            (append (when stackwise-p (make-list ncandidates ""))
                    doc-lines))
          (company-tip--merge-docstrings tooltip-lines it doc-position)
-         ;; (company-tip--merge-docstrings tooltip-lines doc-lines doc-position)
          (if tooltip-popped-nl (cons tooltip-popped-nl it) it)
          (string-join it "\n")
          (overlay-put company-pseudo-tooltip-overlay
@@ -468,37 +463,20 @@ either 'top, meaning showing the doc on the top side, or 'bottom, meaning bottom
 side."
   (let* ((ov company-pseudo-tooltip-overlay)
          (ncandidates (length company-candidates))
-         ;; (company-nl (nth 2 (overlay-get ov 'company-replacement-args)))
          (tooltip-abovep (nth 3 (overlay-get ov 'company-replacement-args)))
-         (tooltip-height (abs (overlay-get ov 'company-height)))
-         ;; (tooltip-string (overlay-get ov 'company-display))
-         ;; (tooltip-strings
-         ;;  (cond
-         ;;   (tooltip-abovep
-         ;;    (cl-subseq (s-lines tooltip-string) 0 -1))
-         ;;   (company-nl
-         ;;    (cl-subseq (s-lines tooltip-string) 1))
-         ;;   (t (s-lines tooltip-string))))
-         )
+         (tooltip-height (abs (overlay-get ov 'company-height))))
     (cond
      ((eq position 'top)
       (if tooltip-abovep
           (let* ((doc-part-matching-tooltip
                   (and (< ncandidates tooltip-height)
                        (append
-                        ;; (if (< (length doc-strings) (- tooltip-height ncandidates))
-                        ;;     (mapcar
-                        ;;      (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
-                        ;;      (cl-subseq tooltip-strings 0 (- (- tooltip-height ncandidates) (length doc-strings)))))
-                        (cl-subseq doc-strings (- (min (length doc-strings) (- tooltip-height ncandidates))))
-                        ;; (mapcar
-                        ;;  (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
-                        ;;  (cl-subseq tooltip-strings (- ncandidates)))
-                        )))
-
+                        (cl-subseq
+                         doc-strings
+                         (- (min (length doc-strings) (- tooltip-height ncandidates)))))))
                  (doc-part-nlines-above
                   (if doc-part-matching-tooltip
-                      (- (length doc-strings);; (+ (length doc-strings) ncandidates)
+                      (- (length doc-strings)
                          (length doc-part-matching-tooltip))
                     (length doc-strings)))
                  (doc-part-lines-above
@@ -515,15 +493,11 @@ side."
         (let* ((doc-part-matching-tooltip
                 (and (< ncandidates tooltip-height)
                      (append
-                      ;; (mapcar
-                      ;;  (lambda (l) (substring l (min (length l) (window-hscroll))))
-                      ;;  ;; (lambda (l) (substring l (min (length l) (+ 1 (window-hscroll)))))
-                      ;;  (cl-subseq tooltip-strings 0 ncandidates))
                       (cl-subseq doc-strings 0 (min (length doc-strings) (- tooltip-height ncandidates))))))
 
                (doc-part-nlines-below
                 (if doc-part-matching-tooltip
-                    (- (length doc-strings);; (+ (length doc-strings) ncandidates)
+                    (- (length doc-strings)
                        (length doc-part-matching-tooltip))
                   (length doc-strings)))
                (doc-part-lines-below
@@ -542,6 +516,7 @@ side."
     (let* ((selected (nth company-selection company-candidates))
            (doc (let ((inhibit-message t))
                   (company-tip--fetch-docstring selected))))
+      (message "%s" doc)
       (when doc
         (let*
             ((ov company-pseudo-tooltip-overlay)
