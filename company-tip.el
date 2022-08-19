@@ -179,7 +179,6 @@ truncated."
 (defun company-tip--format-string (string line-width)
   "Wrap STRING to max width LINE-WIDTH, and truncated at max height HEIGHT."
   (let* ((lines (--> string
-                     (replace-regexp "\\.\\n" "")
                      (s-word-wrap (- line-width 2) it)
                      (s-lines it)))
          (doc-tip-line-width (min line-width (-max (-map (lambda (line) (length line)) lines)))))
@@ -516,7 +515,6 @@ side."
     (let* ((selected (nth company-selection company-candidates))
            (doc (let ((inhibit-message t))
                   (company-tip--fetch-docstring selected))))
-      (message "%s" doc)
       (when doc
         (let*
             ((ov company-pseudo-tooltip-overlay)
